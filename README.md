@@ -26,6 +26,8 @@ The project includes two implementations:
   - Character relationship data
   - Network data in multiple formats (CSV, GEXF, GraphML)
   - Gender analysis across plays
+  - **Full text retrieval in plain text and TEI XML formats**
+  - **Complete play text analysis**
 
 ## Setup
 
@@ -214,6 +216,24 @@ Analyze the gender distribution and representation in Molière's Le Misanthrope
 Find all plays that feature a character named "Hamlet" or similar
 ```
 
+6. Analyze the full text of a play:
+
+```
+Provide a comprehensive analysis of the full text of Goethe's Faust
+```
+
+7. Extract themes from play text:
+
+```
+What are the main themes and motifs in the full text of Shakespeare's Hamlet?
+```
+
+8. Analyze language patterns:
+
+```
+Analyze the language patterns and style in Chekhov's The Cherry Orchard
+```
+
 ### Literary Analysis Queries
 
 1. Analyze play structure:
@@ -252,6 +272,8 @@ The FastMCP server exposes the following resources:
 - `network_data://{corpus_name}/{play_name}` - Network data in CSV format
 - `relations://{corpus_name}/{play_name}` - Character relation data in CSV format
 - `character_by_wikidata://{wikidata_id}` - List plays containing a character by Wikidata ID
+- `full_text://{corpus_name}/{play_name}` - Full text of a play in plain text format
+- `tei_text://{corpus_name}/{play_name}` - Full TEI XML text of a play
 
 ## Tools (v1 API)
 
@@ -262,6 +284,7 @@ The FastMCP server provides the following tools:
 - `analyze_character_relations` - Analyze character relationships in a play
 - `analyze_play_structure` - Analyze the structure of a play
 - `find_character_across_plays` - Find a character across multiple plays
+- `analyze_full_text` - Analyze the full text of a play, including dialogue and stage directions
 
 ## Prompt Templates (v1 API)
 
@@ -273,6 +296,7 @@ The FastMCP server includes these prompt templates:
 - `comparative_analysis` - Template for comparing two plays
 - `gender_analysis` - Template for analyzing gender representation in a play
 - `historical_context` - Template for analyzing the historical context of a play
+- `full_text_analysis` - Template for analyzing the full text of a play
 
 ## How It Works
 

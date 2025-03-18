@@ -147,15 +147,49 @@ def get_network_data(corpus_name: str, play_name: str) -> Dict:
 
 @mcp.resource("relations://{corpus_name}/{play_name}")
 def get_relations(corpus_name: str, play_name: str) -> Dict:
-    """Get relation data of a play in CSV format."""
+    """Get character relation data for a play."""
     try:
-        # Note: This endpoint returns CSV, not JSON
-        url = f"{DRACOR_API_BASE_URL}/corpora/{corpus_name}/plays/{play_name}/relations/csv"
+        url = f"{DRACOR_API_BASE_URL}/corpora/{corpus_name}/plays/{play_name}/relations"
         response = requests.get(url)
         response.raise_for_status()
-        csv_data = response.text
+        relations = response.json()
         
-        return {"csv_data": csv_data}
+        return {"relations": relations}
+    except Exception as e:
+        return {"error": str(e)}
+
+@mcp.resource("full_text://{corpus_name}/{play_name}")
+def get_full_text(corpus_name: str, play_name: str) -> Dict:
+    """Get the full text of a play in plain text format."""
+    try:
+        # The DraCor API doesn't have a direct plain text endpoint
+        # Use the spoken-text endpoint which returns plain text of all dialogue
+        url = f"{DRACOR_API_BASE_URL}/corpora/{corpus_name}/plays/{play_name}/spoken-text"
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        # Get stage directions too
+        stage_url = f"{DRACOR_API_BASE_URL}/corpora/{corpus_name}/plays/{play_name}/stage-directions"
+        stage_response = requests.get(stage_url)
+        stage_response.raise_for_status()
+        
+        # Combine both for a more complete text representation
+        text = f"DIALOGUE:\n\n{response.text}\n\nSTAGE DIRECTIONS:\n\n{stage_response.text}"
+        
+        return {"text": text}
+    except Exception as e:
+        return {"error": str(e)}
+
+@mcp.resource("tei_text://{corpus_name}/{play_name}")
+def get_tei_text(corpus_name: str, play_name: str) -> Dict:
+    """Get the full TEI XML text of a play."""
+    try:
+        url = f"{DRACOR_API_BASE_URL}/corpora/{corpus_name}/plays/{play_name}/tei"
+        response = requests.get(url)
+        response.raise_for_status()
+        tei_text = response.text
+        
+        return {"tei_text": tei_text}
     except Exception as e:
         return {"error": str(e)}
 
@@ -447,6 +481,100 @@ def find_character_across_plays(character_name: str) -> Dict:
     except Exception as e:
         return {"error": str(e)}
 
+@mcp.tool("analyze_full_text")
+def analyze_full_text(corpus_name: str, play_name: str) -> Dict:
+    """Analyze the full text of a play, including dialogue and stage directions."""
+    try:
+        # Get the TEI XML as primary source
+        tei_result = get_tei_text(corpus_name, play_name)
+        if "error" in tei_result:
+            # Fall back to the plain text if TEI fails
+            full_text = get_full_text(corpus_name, play_name)
+            if "error" in full_text:
+                return {"error": full_text["error"]}
+            has_tei = False
+            text_content = full_text["text"]
+        else:
+            has_tei = True
+            tei_text = tei_result["tei_text"]
+            
+            # Simple XML parsing to extract basic structure
+            # In a production environment, use a proper XML parser library
+            import re
+            
+            # Extract title
+            title_match = re.search(r'<title[^>]*>([^<]+)</title>', tei_text)
+            title = title_match.group(1) if title_match else "Unknown"
+            
+            # Extract author(s)
+            author_matches = re.findall(r'<author[^>]*>([^<]+)</author>', tei_text)
+            authors = author_matches if author_matches else ["Unknown"]
+            
+            # Extract acts
+            acts = re.findall(r'<div type="act"[^>]*>(.*?)</div>', tei_text, re.DOTALL)
+            act_count = len(acts)
+            
+            # Extract scenes
+            scenes = re.findall(r'<div type="scene"[^>]*>(.*?)</div>', tei_text, re.DOTALL)
+            scene_count = len(scenes)
+            
+            # Extract speeches
+            speeches = re.findall(r'<sp[^>]*>(.*?)</sp>', tei_text, re.DOTALL)
+            speech_count = len(speeches)
+            
+            # Extract stage directions
+            stage_directions = re.findall(r'<stage[^>]*>(.*?)</stage>', tei_text, re.DOTALL)
+            stage_direction_count = len(stage_directions)
+            
+            # Also get the plain text for easier processing
+            full_text = get_full_text(corpus_name, play_name)
+            text_content = full_text.get("text", "")
+            
+        # Get play metadata
+        play_info = get_play(corpus_name, play_name)
+        if "error" in play_info:
+            return {"error": play_info["error"]}
+            
+        # Get character list
+        characters = get_characters(corpus_name, play_name)
+        if "error" in characters:
+            return {"error": characters["error"]}
+        
+        result = {
+            "play": play_info.get("play", {}),
+            "characters": characters.get("characters", []),
+            "text": text_content,
+        }
+        
+        # Add TEI-specific analysis if available
+        if has_tei:
+            result["tei_analysis"] = {
+                "title": title,
+                "authors": authors,
+                "structure": {
+                    "acts": act_count,
+                    "scenes": scene_count,
+                    "speeches": speech_count,
+                    "stage_directions": stage_direction_count
+                },
+                "text_sample": {
+                    "first_speech": speeches[0] if speeches else "",
+                    "first_stage_direction": stage_directions[0] if stage_directions else ""
+                }
+            }
+        
+        # Add basic text analysis in either case
+        result["analysis"] = {
+            "text_length": len(text_content),
+            "character_count": len(characters.get("characters", [])),
+            "dialogue_to_direction_ratio": text_content.count("\n\nDIALOGUE:") / 
+                                          (text_content.count("\n\nSTAGE DIRECTIONS:") or 1)
+        }
+        
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
 # Prompt templates using decorators
 @mcp.prompt()
 def analyze_play(corpus_name: str, play_name: str) -> str:
@@ -578,6 +706,35 @@ def historical_context(corpus_name: str, play_name: str) -> str:
     6. How the play reflects or challenges the values of its time
     
     Your analysis should help modern readers and scholars understand the play within its original historical framework.
+    """
+
+@mcp.prompt("full_text_analysis")
+def full_text_analysis_prompt() -> str:
+    """Template for analyzing the full text of a play."""
+    return """
+    I'll analyze the full text of {play_title} by {author} from the {corpus_name} corpus.
+    
+    ## Basic Information
+    - Title: {play_title}
+    - Author: {author}
+    - Written: {written_year}
+    - Premiere: {premiere_date}
+    
+    ## Full Text Analysis
+    
+    {analysis}
+    
+    ## Key Themes and Motifs
+    
+    {themes}
+    
+    ## Language and Style
+    
+    {style}
+    
+    ## Historical and Cultural Context
+    
+    {context}
     """
 
 if __name__ == "__main__":
