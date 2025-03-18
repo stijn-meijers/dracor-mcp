@@ -4,16 +4,16 @@ A Model Context Protocol (MCP) server for interacting with the Drama Corpora Pro
 
 ## Overview
 
-This project implements an MCP server using the official Model Context Protocol Python SDK that provides access to the DraCor API. It allows Claude and other LLMs to interact with dramatic text corpora, analyze character networks, retrieve play information, and generate insights about dramatic works across different languages and periods.
+This project implements an MCP server using the official Model Context Protocol Python SDK that provides access to the DraCor API v1. It allows Claude and other LLMs to interact with dramatic text corpora, analyze character networks, retrieve play information, and generate insights about dramatic works across different languages and periods.
 
 The project includes two implementations:
 
-1. `dracor_mcp_server.py` - Standard implementation using the basic MCP SDK
-2. `dracor_mcp_fastmcp.py` - Streamlined implementation using the FastMCP decorator-based API
+1. `dracor_mcp_server.py` - Standard implementation using the basic MCP SDK (older version using v0 API)
+2. `dracor_mcp_fastmcp.py` - Streamlined implementation using the FastMCP decorator-based API with v1 API
 
 ## Features
 
-- Access to DraCor APIs through a unified interface
+- Access to DraCor API v1 through a unified interface
 - No authentication required (DraCor API is publicly accessible)
 - Structured data models for DraCor entities
 - Support for operations:
@@ -23,6 +23,9 @@ The project includes two implementations:
   - Character information and spoken text
   - Comparative play analysis
   - Search functionality
+  - Character relationship data
+  - Network data in multiple formats (CSV, GEXF, GraphML)
+  - Gender analysis across plays
 
 ## Setup
 
@@ -49,13 +52,13 @@ uv pip install -e .
 
 3. Install the MCP server in Claude Desktop:
 
-For standard implementation:
+For standard implementation (v0 API):
 
 ```
 mcp install dracor_mcp_server.py
 ```
 
-Or for FastMCP implementation:
+Or for FastMCP implementation with v1 API (recommended):
 
 ```
 mcp install dracor_mcp_fastmcp.py
@@ -69,7 +72,7 @@ For testing and development:
 mcp dev dracor_mcp_server.py
 ```
 
-Or for FastMCP implementation:
+Or for FastMCP implementation with v1 API (recommended):
 
 ```
 mcp dev dracor_mcp_fastmcp.py
@@ -86,31 +89,44 @@ docker build -t dracor-mcp .
 docker run dracor-mcp
 ```
 
-To use the FastMCP implementation instead, modify the Dockerfile's CMD line:
+To use the FastMCP implementation with v1 API instead:
 
 ```
-CMD ["python", "dracor_mcp_fastmcp.py"]
+docker run -e IMPLEMENTATION=fastmcp dracor-mcp
 ```
 
 ## Implementation Details
 
-### Standard MCP Implementation
+### Standard MCP Implementation (v0 API)
 
-The standard implementation in `dracor_mcp_server.py` uses the core MCP SDK classes:
+The standard implementation in `dracor_mcp_server.py` uses the core MCP SDK classes with the older v0 API:
 
 - `Resource` - For defining API resources
 - `MCPToolImpl` - For implementing tools
 - `PromptTemplate` - For creating prompt templates
 
-### FastMCP Implementation
+### FastMCP Implementation (v1 API)
 
-The FastMCP implementation in `dracor_mcp_fastmcp.py` uses a more concise decorator-based approach:
+The FastMCP implementation in `dracor_mcp_fastmcp.py` uses a more concise decorator-based approach with the current v1 API:
 
 - `@mcp.resource()` - For defining API resources
 - `@mcp.tool()` - For implementing tools
 - `@mcp.prompt()` - For creating prompt templates
 
-This approach results in cleaner, more maintainable code while providing the same functionality.
+This approach results in cleaner, more maintainable code while providing the same functionality but with access to more comprehensive API features.
+
+## v1 API Features
+
+The v1 API implementation provides access to many additional endpoints and capabilities:
+
+- **API info** - Version information for the DraCor API
+- **Corpus metadata** - Detailed metadata for all plays in a corpus
+- **Play metrics** - Network metrics and analysis data
+- **Character network data** - CSV, GEXF, and GraphML formats
+- **Character relations** - Explicit relationships between characters
+- **Spoken text filters** - Filter by gender, relation type, or character role
+- **Stage directions** - Retrieve stage directions with or without speakers
+- **Character lookup** - Find plays containing specific characters (by Wikidata ID)
 
 ## Usage
 
@@ -156,6 +172,18 @@ Compare Goethe's Faust and Schiller's Die Räuber in terms of network density an
 Who are the most central characters in Shakespeare's Hamlet based on speaking time and relationships?
 ```
 
+4. Analyze gender representation:
+
+```
+Analyze the gender distribution and representation in Molière's Le Misanthrope
+```
+
+5. Find a character across different plays:
+
+```
+Find all plays that feature a character named "Hamlet" or similar
+```
+
 ### Literary Analysis Queries
 
 1. Analyze play structure:
@@ -176,37 +204,45 @@ Compare the network structures in plays by Shakespeare and Molière
 Put Pushkin's Boris Godunov in its historical context and analyze how this is reflected in the character network
 ```
 
-## Resources
+## Resources (v1 API)
 
-The server exposes the following resources:
+The FastMCP server exposes the following resources:
 
+- `info://` - API information and version details
 - `corpora://` - List of all available corpora
 - `corpus://{corpus_name}` - Information about a specific corpus
+- `corpus_metadata://{corpus_name}` - Metadata for all plays in a corpus
 - `plays://{corpus_name}` - List of plays in a specific corpus
 - `play://{corpus_name}/{play_name}` - Information about a specific play
-- `network://{corpus_name}/{play_name}` - Character network for a specific play
+- `play_metrics://{corpus_name}/{play_name}` - Network metrics for a specific play
 - `characters://{corpus_name}/{play_name}` - List of characters in a specific play
-- `character://{corpus_name}/{play_name}/{character_id}` - Information about a specific character
-- `metrics://{corpus_name}/{play_name}` - Metrics and statistics for a specific play
-- `spoken_text://{corpus_name}/{play_name}/{character_id}` - Text spoken by a specific character
+- `spoken_text://{corpus_name}/{play_name}` - Spoken text in a play (with optional filters)
+- `spoken_text_by_character://{corpus_name}/{play_name}` - Text spoken by each character
+- `stage_directions://{corpus_name}/{play_name}` - Stage directions in a play
+- `network_data://{corpus_name}/{play_name}` - Network data in CSV format
+- `relations://{corpus_name}/{play_name}` - Character relation data in CSV format
+- `character_by_wikidata://{wikidata_id}` - List plays containing a character by Wikidata ID
 
-## Tools
+## Tools (v1 API)
 
-The server provides the following tools:
+The FastMCP server provides the following tools:
 
 - `search_plays` - Search for plays based on a query
 - `compare_plays` - Compare two plays in terms of metrics and structure
 - `analyze_character_relations` - Analyze character relationships in a play
 - `analyze_play_structure` - Analyze the structure of a play
+- `find_character_across_plays` - Find a character across multiple plays
 
-## Prompt Templates
+## Prompt Templates (v1 API)
 
-The server includes these prompt templates:
+The FastMCP server includes these prompt templates:
 
 - `analyze_play` - Template for analyzing a specific play
 - `character_analysis` - Template for analyzing a specific character
 - `network_analysis` - Template for analyzing a character network
 - `comparative_analysis` - Template for comparing two plays
+- `gender_analysis` - Template for analyzing gender representation in a play
+- `historical_context` - Template for analyzing the historical context of a play
 
 ## How It Works
 
@@ -229,7 +265,7 @@ Be mindful of DraCor's rate limiting policies. The server includes optional rate
 If you encounter issues:
 
 1. Ensure you're using Python 3.10 or higher
-2. Try running in development mode to debug: `mcp dev dracor_mcp_server.py` or `mcp dev dracor_mcp_fastmcp.py`
+2. Try running in development mode to debug: `mcp dev dracor_mcp_fastmcp.py`
 3. Check the DraCor API status at https://dracor.org/doc/api
 
 ## License
@@ -241,5 +277,5 @@ MIT
 This project uses:
 
 - Model Context Protocol Python SDK for building the MCP server
-- DraCor API for dramatic text and network data
+- DraCor API v1 for dramatic text and network data
 - Drama Corpora Project (DraCor) for providing the underlying data and API
