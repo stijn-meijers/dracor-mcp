@@ -908,33 +908,61 @@ def full_text_analysis_prompt() -> str:
 
 @mcp.prompt("character_tagging_analysis")
 def character_tagging_analysis(corpus_name: str = "dutch", play_name: str = None) -> str:
-    """Template for analyzing character ID tagging issues in Dutch historical plays."""
-    return """
-    Your task is to analyze historical plays from the DraCor database to identify character ID tagging issues. Specifically:
+    """Template for analyzing character ID tagging issues in plays.
     
-    1. Select a play from the DraCor database and perform a comprehensive analysis of its character relations, full text, and structure.
+    Parameters:
+    - corpus_name: The corpus to analyze (default: "dutch")
+    - play_name: The specific play to analyze
+    """
+    prompt_text = f"""
+    Your task is to analyze '{play_name}' from the {corpus_name} corpus in the DraCor database to identify character ID tagging issues. Specifically:
+    
+    1. Perform a comprehensive analysis of:
+       * Character relations
+       * Full text (especially TEI format)
+       * Play structure
+       
     2. Identify all possible inconsistencies in character ID tagging, including:
        * Spelling variations of character names
        * Character name confusion or conflation
        * Historical spelling variants
        * Discrepancies between character IDs and stage directions
+       
     3. Create a detailed report of potential character ID tagging errors in a structured table format with the following columns:
-       * Text ID (unique identifier for the play)
+       * Text ID: {corpus_name}/{play_name}
        * Current character ID used in the database
        * Problematic variant(s) found in the text
        * Type of error (spelling, variation, confusion, etc.)
        * Explanation of the issue
-    
-    Focus on the play "{play_name}" from the {corpus_name} corpus if specified, otherwise select a suitable historical play.
-    
-    Approach:
-    1. First examine the play's basic information and structure
-    2. Review the full character list with their IDs 
-    3. Analyze the TEI XML text, focusing on character speech tags (<sp>) and stage directions (<stage>)
-    4. Compare names used in different contexts throughout the text
-    5. Note historical spelling conventions and variants specific to Dutch literature of the period
-    6. Present your findings in the required tabular format
     """
+    
+    # If no specific play is provided, add instructions to select one
+    if not play_name:
+        prompt_text = """
+        Your task is to analyze a play from the {corpus_name} corpus in the DraCor database to identify character ID tagging issues.
+        
+        First, use the search_plays tool to find available plays in the {corpus_name} corpus, then select one for analysis.
+        
+        Once you've selected a play, perform a comprehensive analysis of:
+        1. Character relations
+        2. Full text (especially TEI format)
+        3. Play structure
+        
+        Identify all possible inconsistencies in character ID tagging, including:
+        * Spelling variations of character names
+        * Character name confusion or conflation
+        * Historical spelling variants
+        * Discrepancies between character IDs and stage directions
+        
+        Create a detailed report of potential character ID tagging errors in a structured table format with the following columns:
+        * Text ID (unique identifier for the play)
+        * Current character ID used in the database
+        * Problematic variant(s) found in the text
+        * Type of error (spelling, variation, confusion, etc.)
+        * Explanation of the issue
+        """
+    
+    return prompt_text
 
 if __name__ == "__main__":
     mcp.run() 
