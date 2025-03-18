@@ -204,31 +204,200 @@ def get_plays_with_character(wikidata_id: str) -> Dict:
 
 # Tool implementations using decorators
 @mcp.tool()
-def search_plays(query: str) -> Dict:
-    """Search for plays in the DraCor database."""
+def search_plays(
+    query: str = None, 
+    corpus_name: str = None,
+    character_name: str = None, 
+    country: str = None,
+    language: str = None,
+    author: str = None,
+    year_from: int = None,
+    year_to: int = None,
+    gender_filter: str = None
+) -> Dict:
+    """
+    Advanced search for plays in the DraCor database with multiple filter options.
+    
+    Parameters:
+    - query: General text search across title, subtitle, and author
+    - corpus_name: Specific corpus to search within (e.g., "shake", "ger", "rus", "span", "dutch")
+    - character_name: Name of a character that should appear in the play
+    - country: Country of origin for the play
+    - language: Language of the play
+    - author: Name of the playwright
+    - year_from: Starting year for date range filter
+    - year_to: Ending year for date range filter
+    - gender_filter: Filter by plays with a certain gender ratio ("female_dominated", "male_dominated", "balanced")
+    """
     try:
-        # DraCor v1 doesn't have a dedicated search endpoint, so we'll 
-        # fetch all corpora and filter client-side
-        all_corpora = api_request("corpora")
+        # Get corpora to search in
+        corpora_result = get_corpora()
+        if "error" in corpora_result:
+            return {"error": corpora_result["error"]}
         
+        all_corpora = corpora_result.get("corpora", [])
+        target_corpora = []
+        
+        # Filter corpora if specified
+        if corpus_name:
+            target_corpora = [corp for corp in all_corpora if corpus_name.lower() in corp.get("name", "").lower()]
+        else:
+            target_corpora = all_corpora
+        
+        # Initialize results
         results = []
-        for corpus in all_corpora:
-            corpus_data = api_request(f"corpora/{corpus['name']}")
-            for play in corpus_data.get("plays", []):
-                # Search in title, author names, and other fields
-                searchable_text = (
-                    play.get("title", "") + " " +
-                    " ".join([a.get("name", "") for a in play.get("authors", [])]) + " " +
-                    play.get("subtitle", "")
-                ).lower()
+        detailed_results = []
+        
+        # For each corpus, search for plays
+        for corpus in target_corpora:
+            corpus_name = corpus.get("name")
+            
+            # Get all plays from this corpus
+            plays_result = get_plays(corpus_name)
+            if "error" in plays_result:
+                continue
+            
+            # Iterate through plays and apply filters
+            for play in plays_result.get("plays", []):
+                # Initialize as a match until proven otherwise by filters
+                is_match = True
                 
-                if query.lower() in searchable_text:
+                # Apply general text search if specified
+                if query and is_match:
+                    searchable_text = (
+                        play.get("title", "") + " " +
+                        " ".join([a.get("name", "") for a in play.get("authors", [])]) + " " +
+                        play.get("subtitle", "") + " " +
+                        play.get("originalTitle", "")
+                    ).lower()
+                    
+                    if query.lower() not in searchable_text:
+                        is_match = False
+                
+                # Apply country filter if specified
+                if country and is_match:
+                    play_country = (
+                        play.get("writtenIn", "") + " " + 
+                        play.get("printedIn", "") + " " +
+                        " ".join([a.get("country", "") for a in play.get("authors", [])])
+                    ).lower()
+                    
+                    if country.lower() not in play_country:
+                        is_match = False
+                
+                # Apply language filter if specified
+                if language and is_match:
+                    if language.lower() not in play.get("originalLanguage", "").lower():
+                        is_match = False
+                
+                # Apply author filter if specified
+                if author and is_match:
+                    author_names = [a.get("name", "").lower() for a in play.get("authors", [])]
+                    if not any(author.lower() in name for name in author_names):
+                        is_match = False
+                
+                # Apply year range filter if specified
+                if (year_from or year_to) and is_match:
+                    play_year = play.get("yearNormalized") or play.get("yearWritten") or play.get("yearPrinted") or 0
+                    
+                    if year_from and play_year < year_from:
+                        is_match = False
+                    
+                    if year_to and play_year > year_to:
+                        is_match = False
+                
+                # If character name is specified, need to check character list
+                if character_name and is_match:
+                    try:
+                        # Get characters for this play
+                        play_name = play.get("name")
+                        characters_result = get_characters(corpus_name, play_name)
+                        
+                        if "error" not in characters_result:
+                            character_found = False
+                            for character in characters_result.get("characters", []):
+                                if character_name.lower() in character.get("name", "").lower():
+                                    character_found = True
+                                    break
+                            
+                            if not character_found:
+                                is_match = False
+                        else:
+                            # If we can't get characters, we assume it's not a match
+                            is_match = False
+                    except:
+                        # If error occurs, we assume it's not a match
+                        is_match = False
+                
+                # Apply gender filter if specified
+                if gender_filter and is_match:
+                    try:
+                        # Get characters for this play
+                        play_name = play.get("name")
+                        characters_result = get_characters(corpus_name, play_name)
+                        
+                        if "error" not in characters_result:
+                            male_count = sum(1 for c in characters_result.get("characters", []) if c.get("gender") == "MALE")
+                            female_count = sum(1 for c in characters_result.get("characters", []) if c.get("gender") == "FEMALE")
+                            total = male_count + female_count
+                            
+                            if total > 0:
+                                female_ratio = female_count / total
+                                
+                                if gender_filter == "female_dominated" and female_ratio <= 0.5:
+                                    is_match = False
+                                elif gender_filter == "male_dominated" and female_ratio >= 0.5:
+                                    is_match = False
+                                elif gender_filter == "balanced" and (female_ratio < 0.4 or female_ratio > 0.6):
+                                    is_match = False
+                    except:
+                        # If error occurs, we keep it as a match
+                        pass
+                
+                # If all filters passed, add to results
+                if is_match:
+                    # Add basic info to results
                     results.append({
-                        "corpus": corpus["name"],
+                        "corpus": corpus_name,
                         "play": play
                     })
+                    
+                    # Try to add more detailed info for top results
+                    if len(detailed_results) < 5:
+                        try:
+                            play_name = play.get("name")
+                            # Get more details
+                            play_info = get_play(corpus_name, play_name)
+                            
+                            if "error" not in play_info:
+                                detailed_results.append({
+                                    "corpus": corpus_name,
+                                    "play_name": play_name,
+                                    "title": play.get("title"),
+                                    "author": play.get("authors", [{}])[0].get("name") if play.get("authors") else "Unknown",
+                                    "year": play.get("yearNormalized"),
+                                    "language": play.get("originalLanguage"),
+                                    "characters": len(play_info.get("characters", [])),
+                                    "link": f"https://dracor.org/{corpus_name}/{play_name}"
+                                })
+                        except:
+                            pass
         
-        return {"results": results}
+        return {
+            "count": len(results),
+            "results": results,
+            "top_results": detailed_results,
+            "filters_applied": {
+                "query": query,
+                "corpus_name": corpus_name,
+                "character_name": character_name,
+                "country": country,
+                "language": language,
+                "author": author,
+                "year_range": f"{year_from}-{year_to}" if year_from or year_to else None,
+                "gender_filter": gender_filter
+            }
+        }
     except Exception as e:
         return {"error": str(e)}
 
