@@ -80,6 +80,36 @@ mcp dev dracor_mcp_fastmcp.py
 
 This will launch the MCP Inspector where you can test your tools and resources interactively.
 
+### Claude Configuration
+
+You can also directly configure Claude to use the DraCor MCP server by adding the following to your Claude configuration file:
+
+```json
+{
+  "tools": {
+    "DraCor API v1": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--with",
+        "mcp[cli]",
+        "--with",
+        "requests",
+        "--with",
+        "pydantic",
+        "--with",
+        "python-multipart",
+        "mcp",
+        "run",
+        "/path/to/dracor-mcp/dracor_mcp_fastmcp.py"
+      ]
+    }
+  }
+}
+```
+
+Replace `/path/to/dracor-mcp/` with the actual path to your dracor-mcp directory. This configuration uses `uv run` to execute the MCP server with the necessary dependencies without requiring a prior installation.
+
 ### Docker (optional)
 
 If you prefer using Docker:
