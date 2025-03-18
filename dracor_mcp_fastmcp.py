@@ -906,7 +906,7 @@ def full_text_analysis_prompt() -> str:
     {context}
     """
 
-@mcp.prompt("dutch_character_tagging_analysis")
+@mcp.prompt("character_tagging_analysis")
 def character_tagging_analysis(corpus_name: str = "dutch", play_name: str = None) -> str:
     """Template for analyzing character ID tagging issues in Dutch historical plays."""
     return """
