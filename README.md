@@ -8,8 +8,7 @@ This project implements an MCP server using the official Model Context Protocol 
 
 The project includes two implementations:
 
-1. `dracor_mcp_server.py` - Standard implementation using the basic MCP SDK (older version using v0 API)
-2. `dracor_mcp_fastmcp.py` - Streamlined implementation using the FastMCP decorator-based API with v1 API
+1. `dracor_mcp_fastmcp.py` - Streamlined implementation using the FastMCP decorator-based API with v1 API
 
 ## Features
 
@@ -321,6 +320,25 @@ If you encounter issues:
 1. Ensure you're using Python 3.10 or higher
 2. Try running in development mode to debug: `mcp dev dracor_mcp_fastmcp.py`
 3. Check the DraCor API status at https://dracor.org/doc/api
+
+## Prompt to use with MCP
+
+"Your task is to analyze historical plays from the DraCor database to identify character ID tagging issues. Specifically:
+
+1. Select a play from the DraCor database and perform a comprehensive analysis of its character relations, full text, and structure.
+2. Identify all possible inconsistencies in character ID tagging, including:
+   - Spelling variations of character names
+   - Character name confusion or conflation
+   - Historical spelling variants
+   - Discrepancies between character IDs and stage directions
+3. Create a detailed report of potential character ID tagging errors in a structured table format with the following columns:
+   - Text ID (unique identifier for the play)
+   - Current character ID used in the database
+   - Problematic variant(s) found in the text
+   - Type of error (spelling, variation, confusion, etc.)
+   - Explanation of the issue
+
+do it for this text: [playname]"
 
 ## License
 
