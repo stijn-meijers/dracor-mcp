@@ -111,6 +111,14 @@ You can also directly configure Claude to use the DraCor MCP server by adding th
 
 Replace `/path/to/dracor-mcp/` with the actual path to your dracor-mcp directory. This configuration uses `uv run` to execute the MCP server with the necessary dependencies without requiring a prior installation.
 
+If you want to use a different server, e.g. the staging server, add it to the configuration file after the arguments:
+
+```
+"env": {
+  "DRACOR_API_BASE_URL": "https://staging.dracor.org/api/v1" 
+  }
+```
+
 ### Docker (optional)
 
 If you prefer using Docker:
