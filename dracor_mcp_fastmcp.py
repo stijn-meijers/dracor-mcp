@@ -3,9 +3,11 @@
 from typing import Dict, List, Optional, Any, Union
 import requests
 from mcp.server.fastmcp import FastMCP
+import os
 
 # Base API URL for DraCor v1
-DRACOR_API_BASE_URL = "https://dracor.org/api/v1"
+# Set the Base URL in the environment variable DRACOR_API_BASE_URL 
+DRACOR_API_BASE_URL = str(os.environ.get("DRACOR_API_BASE_URL", "https://dracor.org/api/v1"))
 
 # Create the FastMCP server instance
 mcp = FastMCP("DraCor API v1")
