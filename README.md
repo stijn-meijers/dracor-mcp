@@ -87,7 +87,7 @@ You can also directly configure Claude to use the DraCor MCP server by adding th
 
 ```json
 {
-  "tools": {
+  "mcpServers": {
     "DraCor API v1": {
       "command": "uv",
       "args": [
@@ -103,7 +103,10 @@ You can also directly configure Claude to use the DraCor MCP server by adding th
         "mcp",
         "run",
         "/path/to/dracor-mcp/dracor_mcp_fastmcp.py"
-      ]
+      ],
+      "env": {
+        "DRACOR_API_BASE_URL": "https://dracor.org/api/v1"
+      }
     }
   }
 }
@@ -111,9 +114,9 @@ You can also directly configure Claude to use the DraCor MCP server by adding th
 
 Replace `/path/to/dracor-mcp/` with the actual path to your dracor-mcp directory. This configuration uses `uv run` to execute the MCP server with the necessary dependencies without requiring a prior installation.
 
-If you want to use a different server, e.g. the staging server, add it to the configuration file after the arguments:
+If you want to use a different server, e.g. the staging server, change it in the environment variable `DRACOR_API_BASE_UR` in the configuration file:
 
-```
+```json
 "env": {
   "DRACOR_API_BASE_URL": "https://staging.dracor.org/api/v1" 
   }
